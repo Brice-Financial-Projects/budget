@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request, ses
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, DecimalField, IntegerField
+from wtforms import StringField, PasswordField, SubmitField, DecimalField
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length
 
 app = Flask(__name__, static_url_path='/static')
@@ -83,8 +83,22 @@ def budget():
         income = form.income.data
         total_expenses = form.rent.data + form.utilities.data + form.groceries.data + form.savings.data + form.other.data
         remaining = income - total_expenses
-        return render_template('budget_result.html', income=income, total_expenses=total_expenses, remaining=remaining)
+        # Store results in session for redirection
+        session['budget_results'] = {
+            'income': float(income),
+            'total_expenses': float(total_expenses),
+            'remaining': float(remaining)
+        }
+        return redirect(url_for('budget_results'))
     return render_template('budget.html', form=form)
+
+@app.route('/budget_results')
+def budget_results():
+    if 'budget_results' not in session:
+        flash('No budget results found. Please calculate your budget first.', 'warning')
+        return redirect(url_for('budget'))
+    results = session.pop('budget_results')  # Clear results after displaying
+    return render_template('budget_results.html', **results)
 
 @app.route('/logout')
 def logout():
@@ -96,3 +110,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Initialize the database tables
     app.run(debug=True)
+
